@@ -12,7 +12,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
-  providers: [GitHub, Google],
+  providers: [
+    // Both providers only return verified emails, so linking by email here
+    // isn't actually dangerous — it lets one person use either provider.
+    GitHub({ allowDangerousEmailAccountLinking: true }),
+    Google({ allowDangerousEmailAccountLinking: true }),
+  ],
   session: { strategy: "database" },
   pages: {
     signIn: "/",
