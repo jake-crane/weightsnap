@@ -33,8 +33,8 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
-      <header className="flex items-center justify-between">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 lg:grid lg:grid-cols-[1fr_320px] lg:items-start">
+      <header className="flex items-center justify-between lg:col-span-2">
         <div>
           <h1 className="text-xl font-semibold">WeightSnap</h1>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
@@ -47,30 +47,32 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <WeightChart
-        points={points}
-        displayUnit={displayUnit}
-        goal={goal ? { targetWeight: Number(goal.targetWeight), unit: goal.unit } : null}
-      />
+      <div className="order-2 flex flex-col gap-6 lg:order-1">
+        <WeightChart
+          points={points}
+          displayUnit={displayUnit}
+          goal={goal ? { targetWeight: Number(goal.targetWeight), unit: goal.unit } : null}
+        />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+        <EntryList
+          entries={entries.map((e) => ({
+            id: e.id,
+            recordedAt: e.recordedAt.toISOString(),
+            weight: Number(e.weight),
+            unit: e.unit,
+            note: e.note,
+          }))}
+          displayUnit={displayUnit}
+        />
+      </div>
+
+      <div className="order-1 flex flex-col gap-4 lg:order-2 lg:sticky lg:top-8">
         <WeightForm defaultUnit={displayUnit} />
         <GoalCard
           goal={goal ? { targetWeight: Number(goal.targetWeight), unit: goal.unit } : null}
           displayUnit={displayUnit}
         />
       </div>
-
-      <EntryList
-        entries={entries.map((e) => ({
-          id: e.id,
-          recordedAt: e.recordedAt.toISOString(),
-          weight: Number(e.weight),
-          unit: e.unit,
-          note: e.note,
-        }))}
-        displayUnit={displayUnit}
-      />
     </div>
   );
 }
