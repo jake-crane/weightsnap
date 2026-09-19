@@ -13,7 +13,7 @@ export function UnitToggle({ unit }: { unit: Unit }) {
         <form key={u} action={setPreferredUnit.bind(null, u)}>
           <button
             type="submit"
-            className="px-2 py-1"
+            className="cursor-pointer px-2 py-1"
             style={
               u === unit
                 ? { background: "var(--series-1)", color: "white" }

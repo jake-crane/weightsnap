@@ -8,7 +8,7 @@ export function SignOutButton() {
         await signOut({ redirectTo: "/" });
       }}
     >
-      <button type="submit" className="text-xs" style={{ color: "var(--text-muted)" }}>
+      <button type="submit" className="cursor-pointer text-xs" style={{ color: "var(--text-muted)" }}>
         Sign out
       </button>
     </form>

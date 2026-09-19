@@ -30,7 +30,7 @@ export function GoalCard({
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="underline underline-offset-2 hover:text-inherit"
+          className="cursor-pointer underline underline-offset-2 hover:text-inherit"
         >
           {goal ? "Edit" : "Set a goal"}
         </button>
@@ -44,7 +44,11 @@ export function GoalCard({
         <span className="font-medium" style={{ color: "var(--text-secondary)" }}>
           Goal weight
         </span>
-        <button type="button" onClick={() => setEditing(false)} className="underline underline-offset-2">
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="cursor-pointer underline underline-offset-2"
+        >
           Done
         </button>
       </div>
@@ -77,7 +81,7 @@ export function GoalCard({
         </select>
         <button
           type="submit"
-          className="rounded-md border px-2 py-1 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10"
+          className="cursor-pointer rounded-md border px-2 py-1 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10"
           style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
         >
           {goal ? "Update" : "Set"}
@@ -89,6 +93,7 @@ export function GoalCard({
               await deleteGoal();
               setEditing(false);
             }}
+            className="cursor-pointer"
             style={{ color: "var(--status-critical)" }}
           >
             Remove

@@ -61,7 +61,7 @@ export function EntryList({
                 <form action={deleteEntry.bind(null, entry.id)}>
                   <button
                     type="submit"
-                    className="text-xs"
+                    className="cursor-pointer text-xs"
                     style={{ color: "var(--status-critical)" }}
                   >
                     Delete
