@@ -11,14 +11,10 @@ import {
   YAxis,
 } from "recharts";
 import { format } from "date-fns";
+import { useMergedEntries, type Entry } from "@/components/offline-provider";
 import { toUnit, type Unit } from "@/lib/units";
 
-export type ChartPoint = {
-  recordedAt: string;
-  weight: number;
-  unit: Unit;
-  note: string | null;
-};
+type ChartPoint = Entry;
 
 function ChartTooltip({
   active,
@@ -46,6 +42,9 @@ function ChartTooltip({
       <div style={{ color: "var(--text-muted)" }}>
         {format(new Date(point.recordedAt), "MMM d, yyyy")}
       </div>
+      {point.pendingStatus && point.pendingStatus !== "synced" && (
+        <div style={{ color: "var(--text-muted)" }}>Not synced yet</div>
+      )}
       {point.note && (
         <div className="mt-1" style={{ color: "var(--text-secondary)" }}>
           {point.note}
@@ -55,15 +54,40 @@ function ChartTooltip({
   );
 }
 
+// Entries that are only on this device get a hollow dot.
+function EntryDot({
+  cx,
+  cy,
+  payload,
+}: {
+  cx?: number;
+  cy?: number;
+  payload?: ChartPoint;
+}) {
+  if (cx == null || cy == null) return null;
+  const unsynced = payload?.pendingStatus && payload.pendingStatus !== "synced";
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={4}
+      fill={unsynced ? "var(--surface)" : "var(--series-1)"}
+      stroke={unsynced ? "var(--series-1)" : "var(--surface)"}
+      strokeWidth={2}
+    />
+  );
+}
+
 export function WeightChart({
-  points,
+  entries,
   displayUnit,
   goal,
 }: {
-  points: ChartPoint[];
+  entries: Entry[];
   displayUnit: Unit;
   goal?: { targetWeight: number; unit: Unit } | null;
 }) {
+  const points = useMergedEntries(entries);
   const data = points
     .map((p) => ({
       ...p,
@@ -132,7 +156,7 @@ export function WeightChart({
             dataKey="displayWeight"
             stroke="var(--series-1)"
             strokeWidth={2}
-            dot={{ r: 4, fill: "var(--series-1)", stroke: "var(--surface)", strokeWidth: 2 }}
+            dot={({ key, ...props }) => <EntryDot key={key} {...props} />}
             activeDot={{ r: 5, fill: "var(--series-1)", stroke: "var(--surface)", strokeWidth: 2 }}
           />
         </LineChart>

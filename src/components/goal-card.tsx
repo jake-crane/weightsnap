@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { deleteGoal, setGoal } from "@/app/dashboard/actions";
+import { useOfflineState } from "@/components/offline-provider";
 import { toUnit, type Unit } from "@/lib/units";
 
 export function GoalCard({
@@ -11,9 +12,10 @@ export function GoalCard({
   goal: { targetWeight: number; unit: Unit } | null;
   displayUnit: Unit;
 }) {
+  const { online } = useOfflineState();
   const [editing, setEditing] = useState(false);
 
-  if (!editing) {
+  if (!editing || !online) {
     return (
       <div
         className="flex items-center gap-2 text-xs"
@@ -30,7 +32,9 @@ export function GoalCard({
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="cursor-pointer underline underline-offset-2 hover:text-inherit"
+          disabled={!online}
+          title={online ? undefined : "Connect to the internet to change your goal"}
+          className="cursor-pointer underline underline-offset-2 hover:text-inherit disabled:cursor-not-allowed disabled:opacity-40"
         >
           {goal ? "Edit" : "Set a goal"}
         </button>

@@ -1,19 +1,27 @@
 "use client";
 
-import { useRef } from "react";
-import { addEntry } from "@/app/dashboard/actions";
+import { useState } from "react";
+import { useOfflineState } from "@/components/offline-provider";
 import type { Unit } from "@/lib/units";
 
 export function WeightForm({ defaultUnit }: { defaultUnit: Unit }) {
-  const formRef = useRef<HTMLFormElement>(null);
+  const { online, queueEntry } = useOfflineState();
+  const [savedOffline, setSavedOffline] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
 
   return (
     <form
-      ref={formRef}
-      action={async (formData) => {
-        await addEntry(formData);
-        formRef.current?.reset();
+      // Entries go to the on-device queue, which uploads them right away when
+      // there's a connection. The form resets itself after the action runs.
+      action={(formData) => {
+        const note = String(formData.get("note") ?? "").trim();
+        queueEntry({
+          weight: Number(formData.get("weight")),
+          unit: formData.get("unit") === "kg" ? "kg" : "lbs",
+          recordedAt: String(formData.get("recordedAt")),
+          note: note || null,
+        });
+        setSavedOffline(!online);
       }}
       className="flex flex-col gap-3 rounded-lg border p-4"
       style={{ borderColor: "var(--border)", background: "var(--surface)" }}
@@ -24,7 +32,8 @@ export function WeightForm({ defaultUnit }: { defaultUnit: Unit }) {
           name="weight"
           type="number"
           step="0.1"
-          min="0"
+          min="0.1"
+          max="2000"
           required
           placeholder="Weight"
           className="w-full rounded-md border px-3 py-2 text-sm"
@@ -62,6 +71,11 @@ export function WeightForm({ defaultUnit }: { defaultUnit: Unit }) {
       >
         Save entry
       </button>
+      {savedOffline && (
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          Saved on this device. It will sync when you&apos;re back online.
+        </p>
+      )}
     </form>
   );
 }

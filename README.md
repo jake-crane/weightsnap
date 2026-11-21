@@ -9,6 +9,8 @@ A small web app for logging your body weight, setting a goal weight, and watchin
 - **Progress chart** of your entries over time, with your goal shown as a reference line.
 - **Goal weight** that you can set, change, or remove.
 - **Display unit toggle** between lbs and kg. Your choice is saved to your account, and entries logged in the other unit are converted for display.
+- **Installable on your phone.** On iPhone, open the site in Safari, tap Share, then **Add to Home Screen**. It opens full screen, without the browser's address bar.
+- **Works offline.** Once you've opened the dashboard signed in, it opens without a connection and shows your data as of your last visit. Weights you log offline are saved on the device and upload when you're back online and the app is open (iPhone doesn't allow background sync). Changing units, editing your goal and deleting saved entries need a connection.
 
 ## Tech stack
 
@@ -93,14 +95,22 @@ src/
     dashboard/page.tsx            Main dashboard (chart, entries, form, goal)
     dashboard/actions.ts          Server Actions for entries, goals, and units
     api/auth/[...nextauth]/       Auth.js route handler
+    api/entries/                  Creates entries; used by the offline sync queue
+    api/health/                   Lets the app check it can reach the server
   auth.ts                         Auth.js config (providers, Drizzle adapter)
   proxy.ts                        Protects /dashboard routes
   components/                     UI components (chart, form, entry list, etc.)
   db/schema.ts                    Drizzle schema
   db/index.ts                     Database client
   lib/units.ts                    lbs/kg conversion helpers
+  lib/pending-entries.ts          On-device queue of entries not yet synced
+public/sw.js                      Service worker that keeps the app usable offline
 drizzle/                          Generated SQL migrations
 ```
+
+## Testing offline mode
+
+The service worker only registers in production builds, so use `npm run build` and `npm run start`. `next start` needs `AUTH_TRUST_HOST=true` to accept sign-ins on `localhost`. Vercel sets this up automatically. In development, the app removes any service worker left over from a production run on the same port.
 
 ## Deployment
 

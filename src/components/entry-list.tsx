@@ -2,15 +2,72 @@
 
 import { format } from "date-fns";
 import { deleteEntry } from "@/app/dashboard/actions";
+import {
+  useMergedEntries,
+  useOfflineState,
+  type Entry,
+} from "@/components/offline-provider";
 import { toUnit, type Unit } from "@/lib/units";
 
-export type Entry = {
-  id: string;
-  recordedAt: string;
-  weight: number;
-  unit: Unit;
-  note: string | null;
-};
+export type { Entry };
+
+function SyncStatus({ entry }: { entry: Entry }) {
+  if (entry.pendingStatus === "pending") {
+    return (
+      <span className="ml-2 text-xs font-normal" style={{ color: "var(--text-muted)" }}>
+        Not synced
+      </span>
+    );
+  }
+  if (entry.pendingStatus === "error") {
+    return (
+      <span
+        className="ml-2 text-xs font-normal"
+        style={{ color: "var(--status-critical)" }}
+      >
+        {entry.error}
+      </span>
+    );
+  }
+  return null;
+}
+
+function DeleteButton({ entry }: { entry: Entry }) {
+  const { online, discardPending } = useOfflineState();
+  const className = "cursor-pointer text-xs disabled:cursor-not-allowed disabled:opacity-40";
+  const style = { color: "var(--status-critical)" };
+
+  // Still only on this device: deleting just drops it from the queue.
+  if (entry.pendingStatus === "pending" || entry.pendingStatus === "error") {
+    return (
+      <button
+        type="button"
+        onClick={() => discardPending(entry.id)}
+        className={className}
+        style={style}
+      >
+        Delete
+      </button>
+    );
+  }
+
+  // Uploaded but not in the server's list yet: nothing to delete here yet.
+  if (entry.pendingStatus === "synced") return null;
+
+  return (
+    <form action={deleteEntry.bind(null, entry.id)}>
+      <button
+        type="submit"
+        disabled={!online}
+        title={online ? undefined : "Connect to the internet to delete"}
+        className={className}
+        style={style}
+      >
+        Delete
+      </button>
+    </form>
+  );
+}
 
 export function EntryList({
   entries,
@@ -19,7 +76,8 @@ export function EntryList({
   entries: Entry[];
   displayUnit: Unit;
 }) {
-  const sorted = [...entries].sort(
+  const merged = useMergedEntries(entries);
+  const sorted = [...merged].sort(
     (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
   );
 
@@ -48,8 +106,9 @@ export function EntryList({
               <td className="px-4 py-2 whitespace-nowrap">
                 {format(new Date(entry.recordedAt), "MMM d, yyyy")}
               </td>
-              <td className="px-4 py-2 font-medium tabular-nums">
+              <td className="px-4 py-2 font-medium whitespace-nowrap tabular-nums">
                 {toUnit(entry.weight, entry.unit, displayUnit).toFixed(1)} {displayUnit}
+                <SyncStatus entry={entry} />
               </td>
               <td
                 className="px-4 py-2 max-w-xs truncate"
@@ -58,15 +117,7 @@ export function EntryList({
                 {entry.note}
               </td>
               <td className="px-4 py-2 text-right">
-                <form action={deleteEntry.bind(null, entry.id)}>
-                  <button
-                    type="submit"
-                    className="cursor-pointer text-xs"
-                    style={{ color: "var(--status-critical)" }}
-                  >
-                    Delete
-                  </button>
-                </form>
+                <DeleteButton entry={entry} />
               </td>
             </tr>
           ))}
