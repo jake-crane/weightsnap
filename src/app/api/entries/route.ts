@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/db";
+import { dayToRecordedAt } from "@/lib/dates";
 import { weightEntries } from "@/db/schema";
 
 // Entries are created here rather than through a Server Action so the
@@ -10,7 +11,8 @@ const entrySchema = z.object({
   id: z.uuid(),
   weight: z.number().positive().max(2000),
   unit: z.enum(["lbs", "kg"]),
-  recordedAt: z.coerce.date(),
+  // The calendar day picked in the form, stored as midnight UTC.
+  recordedAt: z.iso.date().transform((day) => new Date(dayToRecordedAt(day))),
   note: z.string().max(500).nullish(),
 });
 

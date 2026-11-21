@@ -20,6 +20,7 @@ import {
   type PendingEntry,
   type PendingStatus,
 } from "@/lib/pending-entries";
+import { dayToRecordedAt } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 
 export type Entry = {
@@ -291,7 +292,7 @@ export function useMergedEntries(entries: Entry[]): Entry[] {
       ...entries,
       ...pending.map((p) => ({
         id: p.id,
-        recordedAt: new Date(p.recordedAt).toISOString(),
+        recordedAt: dayToRecordedAt(p.recordedAt),
         weight: p.weight,
         unit: p.unit,
         note: p.note,

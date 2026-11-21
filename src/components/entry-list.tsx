@@ -1,12 +1,12 @@
 "use client";
 
-import { format } from "date-fns";
 import { deleteEntry } from "@/app/dashboard/actions";
 import {
   useMergedEntries,
   useOfflineState,
   type Entry,
 } from "@/components/offline-provider";
+import { formatEntryDate } from "@/lib/dates";
 import { toUnit, type Unit } from "@/lib/units";
 
 export type { Entry };
@@ -104,7 +104,7 @@ export function EntryList({
           {sorted.map((entry) => (
             <tr key={entry.id} style={{ borderTop: "1px solid var(--gridline)" }}>
               <td className="px-4 py-2 whitespace-nowrap">
-                {format(new Date(entry.recordedAt), "MMM d, yyyy")}
+                {formatEntryDate(entry.recordedAt, "MMM d, yyyy")}
               </td>
               <td className="px-4 py-2 font-medium whitespace-nowrap tabular-nums">
                 {toUnit(entry.weight, entry.unit, displayUnit).toFixed(1)} {displayUnit}

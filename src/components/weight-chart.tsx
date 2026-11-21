@@ -10,8 +10,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { format } from "date-fns";
 import { useMergedEntries, type Entry } from "@/components/offline-provider";
+import { formatEntryDate } from "@/lib/dates";
 import { toUnit, type Unit } from "@/lib/units";
 
 type ChartPoint = Entry;
@@ -40,7 +40,7 @@ function ChartTooltip({
         {point.displayWeight.toFixed(1)} {displayUnit}
       </div>
       <div style={{ color: "var(--text-muted)" }}>
-        {format(new Date(point.recordedAt), "MMM d, yyyy")}
+        {formatEntryDate(point.recordedAt, "MMM d, yyyy")}
       </div>
       {point.pendingStatus && point.pendingStatus !== "synced" && (
         <div style={{ color: "var(--text-muted)" }}>Not synced yet</div>
@@ -121,7 +121,7 @@ export function WeightChart({
           />
           <XAxis
             dataKey="recordedAt"
-            tickFormatter={(v) => format(new Date(v), "MMM d")}
+            tickFormatter={(v: string) => formatEntryDate(v, "MMM d")}
             stroke="var(--baseline)"
             tick={{ fill: "var(--text-muted)", fontSize: 12 }}
             tickLine={false}

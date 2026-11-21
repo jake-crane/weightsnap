@@ -1,13 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useOfflineState } from "@/components/offline-provider";
+import { localDateString } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
+
+// "Today" has to come from the browser: the server renders in UTC, which is
+// already tomorrow in the evening for anyone west of UTC. Re-read on every
+// render so a home-screen app left open overnight moves on to the new day.
+const noSubscription = () => () => {};
+
+function useLocalToday() {
+  return useSyncExternalStore(noSubscription, () => localDateString(), () => "");
+}
 
 export function WeightForm({ defaultUnit }: { defaultUnit: Unit }) {
   const { online, queueEntry } = useOfflineState();
   const [savedOffline, setSavedOffline] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = useLocalToday();
 
   return (
     <form
