@@ -56,9 +56,11 @@ self.addEventListener("message", (event) => {
   }
 });
 
+// Matched on URL alone: script requests carry an Origin header, and a server
+// that sends Vary: Origin would otherwise never match the saved copy.
 async function cacheFirst(request) {
   const cache = await caches.open(STATIC_CACHE);
-  const cached = await cache.match(request);
+  const cached = await cache.match(request, { ignoreVary: true });
   if (cached) return cached;
   const response = await fetch(request);
   if (response.ok) await putStatic(cache, request.url, response.clone());
@@ -119,7 +121,7 @@ async function cacheAssets(html) {
   await Promise.all(
     [...urls].map(async (path) => {
       const url = new URL(path, self.location.origin).href;
-      if (await cache.match(url)) return;
+      if (await cache.match(url, { ignoreVary: true })) return;
       try {
         const response = await fetch(url);
         if (response.ok) await putStatic(cache, url, response);
