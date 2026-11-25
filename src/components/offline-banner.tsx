@@ -4,10 +4,10 @@ import { format } from "date-fns";
 import { useOfflineState } from "@/components/offline-provider";
 
 export function OfflineBanner() {
-  const { online, renderedAt, pending } = useOfflineState();
+  const { online, renderedAt, updating, pending } = useOfflineState();
   const unsynced = pending.filter((e) => e.status === "pending").length;
 
-  if (online && unsynced === 0) return null;
+  if (online && unsynced === 0 && !updating) return null;
 
   const waiting =
     unsynced === 1 ? "1 entry is waiting to sync." : `${unsynced} entries are waiting to sync.`;
@@ -22,8 +22,10 @@ export function OfflineBanner() {
         color: "var(--text-secondary)",
       }}
     >
-      {online ? (
+      {online && unsynced > 0 ? (
         <>Syncing… {waiting}</>
+      ) : online ? (
+        <>Showing data from {format(new Date(renderedAt), "MMM d, h:mm a")}. Updating…</>
       ) : (
         <>
           <span className="font-medium" style={{ color: "var(--foreground)" }}>

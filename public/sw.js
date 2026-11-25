@@ -1,9 +1,12 @@
 // WeightSnap service worker: lets the installed app open without a
 // connection by keeping a copy of the dashboard and the files it needs.
 //
-// - Page loads go to the network first. A good /dashboard response is saved
-//   for offline use. With no network (or none within NETWORK_TIMEOUT_MS when
-//   a copy exists), the saved copy is shown instead.
+// - /dashboard opens instantly from its saved copy when there is one, so the
+//   app is usable while the network or a cold server catches up. A fresh copy
+//   is fetched in the background and saved for next time, and the page
+//   refreshes its own data once the server answers (see offline-provider).
+// - Other page loads go to the network first. With no network (or none
+//   within NETWORK_TIMEOUT_MS), they open the saved dashboard instead.
 // - Build files under /_next/static/ are content-hashed and never change, so
 //   they are served from the cache when present.
 // - Everything else (API calls, Server Actions, RSC requests) is left alone.
@@ -68,13 +71,21 @@ async function cacheFirst(request) {
 }
 
 async function handleNavigation(event, url) {
+  const isOfflinePage = url.pathname === OFFLINE_PAGE;
   const network = fetch(event.request);
-  // Avoid an unhandled rejection if we answer from the cache first.
-  network.catch(() => {});
+  // Whenever the network answers, even after we've replied from the cache,
+  // keep the dashboard's saved copy current (or drop it if signed out).
+  const saving = network
+    .then((response) => (isOfflinePage ? savePage(response.clone()) : undefined))
+    .catch(() => {});
+  event.waitUntil(saving);
 
   const saved = await caches
     .open(PAGE_CACHE)
     .then((cache) => cache.match(OFFLINE_PAGE, { ignoreVary: true }));
+
+  // Stale-while-revalidate for the dashboard itself.
+  if (saved && isOfflinePage) return saved;
 
   let response;
   try {
@@ -85,10 +96,7 @@ async function handleNavigation(event, url) {
     response = undefined;
   }
 
-  if (response) {
-    if (url.pathname === OFFLINE_PAGE) event.waitUntil(savePage(response.clone()));
-    return response;
-  }
+  if (response) return response;
 
   // Offline (or too slow). Open the saved dashboard if there is one.
   if (saved) {

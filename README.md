@@ -10,7 +10,7 @@ A small web app for logging your body weight, setting a goal weight, and watchin
 - **Goal weight** that you can set, change, or remove.
 - **Display unit toggle** between lbs and kg. Your choice is saved to your account, and entries logged in the other unit are converted for display.
 - **Installable on your phone.** On iPhone, open the site in Safari, tap Share, then **Add to Home Screen**. It opens full screen, without the browser's address bar.
-- **Works offline.** Once you've opened the dashboard signed in, it opens without a connection and shows your data as of your last visit. Weights you log offline are saved on the device and upload when you're back online and the app is open (iPhone doesn't allow background sync). Changing units, editing your goal and deleting saved entries need a connection.
+- **Opens instantly, even offline.** Once you've opened the dashboard signed in, it opens straight away from the copy saved on your last visit, so it's usable while a cold server wakes up or with no connection at all. Fresh data replaces it as soon as the server responds. Weights you log offline are saved on the device and upload when you're back online and the app is open (iPhone doesn't allow background sync). Changing units, editing your goal and deleting saved entries need a connection.
 
 ## Tech stack
 
@@ -108,7 +108,9 @@ public/sw.js                      Service worker that keeps the app usable offli
 drizzle/                          Generated SQL migrations
 ```
 
-## Testing offline mode
+## Offline mode
+
+The full requirements, how it works, and how to test it are in [docs/offline.md](docs/offline.md).
 
 The service worker only registers in production builds, so use `npm run build` and `npm run start`. `next start` needs `AUTH_TRUST_HOST=true` to accept sign-ins on `localhost`. Vercel sets this up automatically. In development, the app removes any service worker left over from a production run on the same port.
 

@@ -7,7 +7,9 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
+  useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -39,6 +41,8 @@ type OfflineContextValue = {
   online: boolean;
   /** When the server rendered the data on screen (ISO timestamp). */
   renderedAt: string;
+  /** True while a saved copy is on screen and fresh data is on its way. */
+  updating: boolean;
   /** Entries on this device that aren't in the server's list yet. */
   pending: PendingEntry[];
   queueEntry: (entry: Omit<PendingEntry, "id" | "status">) => void;
@@ -53,6 +57,47 @@ const OfflineContext = createContext<OfflineContextValue | null>(null);
 const SYNCED_TTL_MS = 60 * 60 * 1000;
 const RETRY_INTERVAL_MS = 30 * 1000;
 const RECONNECT_CHECK_MS = 15 * 1000;
+
+// The service worker opens the dashboard from its saved copy so the app is
+// usable straight away, even while a cold server wakes up. Data rendered more
+// than this long ago is treated as a saved copy and refreshed once the server
+// answers.
+const STALE_AFTER_MS = 30 * 1000;
+// If a refresh fails, Next.js falls back to reloading the page, which opens
+// the saved copy again. Never auto-refresh more often than this, so a server
+// that keeps failing can't cause a reload loop.
+const AUTO_REFRESH_MIN_GAP_MS = 60 * 1000;
+const AUTO_REFRESH_KEY = "weightsnap:auto-refresh-at";
+let lastAutoRefreshInMemory = 0;
+// Set while waiting out that gap with saved data still on screen.
+let staleRetryTimer: ReturnType<typeof setTimeout> | undefined;
+
+function isStale(renderedAt: string) {
+  return Date.now() - Date.parse(renderedAt) > STALE_AFTER_MS;
+}
+
+/** Records an automatic refresh, or returns false if one ran too recently. */
+function claimAutoRefresh(): boolean {
+  const now = Date.now();
+  let last = lastAutoRefreshInMemory;
+  try {
+    last = Math.max(last, Number(sessionStorage.getItem(AUTO_REFRESH_KEY)) || 0);
+  } catch {
+    // sessionStorage unavailable: the in-memory value still limits this page.
+  }
+  if (now - last < AUTO_REFRESH_MIN_GAP_MS) return false;
+
+  // Only record refreshes that actually run, so refused attempts (say, the
+  // checks made every few seconds while offline) don't keep pushing the
+  // window forward.
+  lastAutoRefreshInMemory = now;
+  try {
+    sessionStorage.setItem(AUTO_REFRESH_KEY, String(now));
+  } catch {
+    // As above.
+  }
+  return true;
+}
 
 function subscribeOnline(listener: () => void) {
   window.addEventListener("online", listener);
@@ -176,6 +221,28 @@ export function OfflineProvider({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const [, startRefresh] = useTransition();
+  // renderedAt of the data on screen once it's known to be a saved copy that
+  // still needs refreshing. Fresh data brings a new renderedAt, which ends it.
+  const [savedCopyFrom, setSavedCopyFrom] = useState<string | null>(null);
+  const renderedAtRef = useRef(renderedAt);
+  useEffect(() => {
+    renderedAtRef.current = renderedAt;
+  }, [renderedAt]);
+
+  // Opened from a saved copy: start loading fresh data straight away rather
+  // than after the connection check, so a cold server wakes for both at once.
+  // If this fails, the rate limit in claimAutoRefresh stops a reload loop.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (navigator.onLine && isStale(renderedAtRef.current) && claimAutoRefresh()) {
+        setSavedCopyFrom(renderedAtRef.current);
+        startRefresh(() => router.refresh());
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [router]);
+
   const browserOnline = useSyncExternalStore(
     subscribeOnline,
     () => navigator.onLine,
@@ -210,12 +277,32 @@ export function OfflineProvider({
   }, [queue, serverIds, userId]);
 
   // Also serves as the connection check: with nothing to upload it just pings
-  // the server.
+  // the server. Once the server answers, a saved copy still on screen (say,
+  // one opened while offline) is replaced with fresh data.
+  const syncRef = useRef<() => void>(() => {});
   const sync = useCallback(async () => {
     const { synced, reachable } = await syncPending(userId);
     setServerReachable(reachable);
-    if (synced > 0) router.refresh();
+    if (synced > 0) {
+      startRefresh(() => router.refresh());
+    } else if (reachable && isStale(renderedAtRef.current)) {
+      setSavedCopyFrom(renderedAtRef.current);
+      if (claimAutoRefresh()) {
+        startRefresh(() => router.refresh());
+      } else if (!staleRetryTimer) {
+        // A refresh ran moments ago (and failed, or the data would be fresh).
+        // Try again once the gap has passed rather than leaving saved data
+        // up until the app is next brought to the foreground.
+        staleRetryTimer = setTimeout(() => {
+          staleRetryTimer = undefined;
+          syncRef.current();
+        }, AUTO_REFRESH_MIN_GAP_MS);
+      }
+    }
   }, [userId, router]);
+  useEffect(() => {
+    syncRef.current = sync;
+  }, [sync]);
 
   // Sync on load, when the connection comes back, when the app returns to
   // the foreground, and every so often while something is still waiting.
@@ -270,9 +357,11 @@ export function OfflineProvider({
     [queue, serverIds],
   );
 
+  const updating = savedCopyFrom === renderedAt;
+
   const value = useMemo(
-    () => ({ online, renderedAt, pending, queueEntry, discardPending }),
-    [online, renderedAt, pending, queueEntry, discardPending],
+    () => ({ online, renderedAt, updating, pending, queueEntry, discardPending }),
+    [online, renderedAt, updating, pending, queueEntry, discardPending],
   );
 
   return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;
